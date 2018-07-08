@@ -1,7 +1,9 @@
 # Roboy Snapchat Filter
 Feature for applying Snapchat-alike filters like Roboy mask, mustache, pixelated sunglasses, flies, hat, crown and rainbow automatic in-face superposition in real time.
 
-![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png)
+![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png) ![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png) ![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png)
+
+
 
 
 ## Requirements
