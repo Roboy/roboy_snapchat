@@ -1,6 +1,8 @@
 # Roboy Snapchat Filter
 Feature for applying Snapchat-alike filters like Roboy mask, mustache, pixelated sunglasses, flies, hat, crown and rainbow automatic in-face superposition in real time.
 
+![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png)
+
 
 ## Requirements
 
@@ -11,7 +13,6 @@ Feature for applying Snapchat-alike filters like Roboy mask, mustache, pixelated
      * tkinter
 * Python bindings of dlib.
 * [ROS Kinetic](http://wiki.ros.org/kinetic)
-* [ROSbridge](http://wiki.ros.org/rosbridge_suite)
 * [Catkin Workspace](https://github.com/Roboy)
 
 
@@ -38,8 +39,18 @@ Finally install it with `pip install dlib`
 
 ## ROS service
 
-### Start roscore
-in terminal with `roscore` 
+Roboy Snapchat Filter is a ROS package and depens on `roboy_communication_cogntion`. To start it's ROS server do following:
 
-### Snapchat server
-In a new terminal go to /roboy_snapchat_filter/scripts/ directory and execute `rosrun roboy_snapchat_filter snapchat_server.py`
+- Start ROS master in terminal with 
+```
+roscore
+```
+
+- In a new terminal change directory to
+```
+cd roboy_snapchat/roboy_snapchat_filter/scripts/
+```
+here, start the snapchat server with
+```
+rosrun roboy_snapchat_filter snapchat_server.py
+```
