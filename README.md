@@ -52,11 +52,7 @@ Roboy Snapchat Filter is a ROS package and depens on `roboy_communication_cognti
 roscore
 ```
 
-- In a new terminal change directory to
-```
-cd roboy_snapchat/roboy_snapchat_filter/scripts/
-```
-here, start the snapchat server with
+- In a new terminal start the snapchat server with
 ```
 rosrun roboy_snapchat_filter snapchat_server.py
 ```
