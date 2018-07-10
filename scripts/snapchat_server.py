@@ -10,6 +10,8 @@ import cv2, threading, os, time
 from threading import Thread
 from os import listdir
 from os.path import isfile, join
+import rospkg
+
 
 import dlib
 #import imutils
@@ -145,12 +147,17 @@ def get_face_boundbox(points, face_part):
 def cvloop(run_event):
     global panelA
     global SPRITES
+    global path
+    
+    rospack = rospkg.RosPack()
+    path = rospack.get_path('roboy_snapchat_filter')
 
-    spr = "../sprites/"
+
+    spr = path + "/sprites/"
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
-    video_capture = cv2.VideoCapture(0) #read from webcam
+    video_capture = cv2.VideoCapture(2) #read from webcam
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
     #Filters path
@@ -159,7 +166,7 @@ def cvloop(run_event):
 
     #Facial landmarks
     print("[INFO] loading Roboy Snapchat Filter ...")
-    model = "../filters/shape_predictor_68_face_landmarks.dat"
+    model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
 
 
