@@ -1,9 +1,13 @@
 # Roboy Snapchat Filter
-Feature for applying Snapchat-alike filters like Roboy mask, mustache, pixelated sunglasses, flies, hat, crown and rainbow automatic in-face superposition in real time.
+Feature for applying Snapchat-alike filters like Roboy mask, mustache, pixelated sunglasses, flies, hat, crown and rainbow automatic in-face superposition in real time: 
 
-![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png) ![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png) ![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/sprites/roboy.png)
+![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/imgs/roboy_filters.png) 
 
+Multiple filters can be applied simultaneously:
 
+![alt text](https://github.com/Roboy/roboy_snapchat/blob/master/imgs/all.png)
+
+The implementation of Roboy Snapchat Filter uses a [Histogram of Oriented Gradients (HOG)](https://en.wikipedia.org/wiki/Histogram_of_oriented_gradients) feature combined with a linear classifier, an image pyramid, and sliding window detection scheme to detect faces. Then it finds the 68 facial landmarks using an [Ensemble of Regression Trees](https://pdfs.semanticscholar.org/d78b/6a5b0dcaa81b1faea5fb0000045a62513567.pdf) to detect the face characteristics and to estimate the tilt angle of the face. The points around the mouth are used to detect wether it is open and if so, display a rainbow coming out.
 
 
 ## Requirements
@@ -56,3 +60,14 @@ here, start the snapchat server with
 ```
 rosrun roboy_snapchat_filter snapchat_server.py
 ```
+
+- Use following ROS service call to trigger a filter
+```
+rosservice call /roboy/cognition/apply_filter "name: 'hat'"
+```
+
+Replace `hat` with one of the other filters:
+`roboy`, `mustache`, `sunglasses`, `flies`, `crown`
+
+
+When opening the mouth, the `rainbow` filter will automatically be applied
