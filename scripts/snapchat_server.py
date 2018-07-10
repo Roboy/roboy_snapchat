@@ -343,13 +343,18 @@ def cvloop(run_event):
 
     video_capture.release()
 
+global path
+
+rospack = rospkg.RosPack()
+path = rospack.get_path('roboy_snapchat_filter')
+
 # Initialize GUI object
 root = Tk()
 root.title("ROBOY SNAPCHAT FILTERS")
-this_dir = os.path.dirname(os.path.realpath(__file__))
 
 # Adds a custom logo
-imgicon = PhotoImage(file=os.path.join(this_dir, '../sprites/roboy_sunglasses_mustache_crown.png'))
+imgicon = PhotoImage(file= path + '/sprites/roboy_sunglasses_mustache_crown.png')
+
 root.tk.call('wm', 'iconphoto', root._w, imgicon)
 
 # Create the panel where webcam image will be shown
