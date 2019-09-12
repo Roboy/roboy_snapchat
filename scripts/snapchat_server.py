@@ -19,14 +19,15 @@ from imutils import face_utils, rotate_bound
 import math
 
 import rospy
-from roboy_communication_cognition.srv import ApplyFilter
+from roboy_cognition_msgs.srv import ApplyFilter
+from std_msgs.msg import String
 
 
 def handleRequest(req):
     print ("Chosen filter: "+req.name)
-    
+
     if req.name == "roboy":
-        put_sprite(0)     
+        put_sprite(0)
     if req.name == "mustache":
         put_sprite(1)
     if req.name == "sunglasses":
@@ -39,11 +40,33 @@ def handleRequest(req):
         put_sprite(5)
     return True
 
+def callback(msg):
+    global save
+    if msg.data == "cheese":
+        print("saved to file")
+        save = True
+
+    else:
+        print ("Chosen filter: "+msg.data)
+
+        if msg.data == "roboy":
+            put_sprite(0)
+        elif msg.data == "mustache":
+            put_sprite(1)
+        elif msg.data == "sunglasses":
+            put_sprite(2)
+        elif msg.data == "hat":
+            put_sprite(3)
+        elif msg.data == "flies":
+            put_sprite(4)
+        elif msg.data == "crown":
+            put_sprite(5)
+
 def snapchat_server():
-	rospy.init_node('snapchat_server')
+	rospy.init_node('snapchat_server'); rospy.Subscriber("/roboy/cognition/apply_filter", String, callback)
 	server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
 	print("Ready for Snapchat")
-	#rospy.spin()
+	rospy.spin()
 
 ### Function to set wich sprite must be drawn
 def put_sprite(num):
@@ -144,11 +167,13 @@ def get_face_boundbox(points, face_part):
 
 
 #Principal Loop where openCV (magic) ocurs
-def cvloop(run_event):
+def cvloop():
     global panelA
     global SPRITES
     global path
-    
+    global save
+    save = False
+
     rospack = rospkg.RosPack()
     path = rospack.get_path('roboy_snapchat_filter')
 
@@ -157,7 +182,7 @@ def cvloop(run_event):
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
-    video_capture = cv2.VideoCapture(2) #read from webcam
+    video_capture = cv2.VideoCapture(-1) #read from webcam
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
     #Filters path
@@ -170,10 +195,11 @@ def cvloop(run_event):
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
 
 
-    while run_event.is_set(): #while the thread is active we loop
+    # while run_event.is_set(): #while the thread is active we loop
+    while True:
         ret, image = video_capture.read()
         #image = imutils.resize(image, width=3000)
-        image = image[0:376, 0:500]
+        # image = image[0:376, 0:500]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         faces = detector(gray, 0)
 
@@ -187,12 +213,12 @@ def cvloop(run_event):
             # condition to see if mouth is open
             is_mouth_open = (shape[66][1] -shape[62][1]) >= 10 #y coordiantes of landmark points of lips
 
-            
+
             #mustache condition
             if (SPRITES[1] and not SPRITES[0]):
                 (x1,y1,w1,h1) = get_face_boundbox(shape, 6)
                 apply_sprite(image, spr+"mustache.png",w1+10,x1-5,y1+5, incl)
-            
+
             #pixelated sunglasses condition
             if (SPRITES[2] and not SPRITES[0]):
                 (x3,y3,_,h3) = get_face_boundbox(shape, 1)
@@ -205,27 +231,27 @@ def cvloop(run_event):
             #hat condition
             if (SPRITES[3] and not SPRITES[0] and not SPRITES[5]):
                 apply_sprite(image, spr+"hat.png",w+30,x-20,y, incl)
-            
-            
-            
+
+
+
             #roboy + mustache + sunglasses + crown + rainbow condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
-            
+
             #roboy + mustache + sunglasses + crown condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5]):
                 apply_sprite(image, spr+"roboy_sunglasses_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
-            
+
             #roboy + mustache + sunglasses + hat + rainbow condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
-            
+
             #roboy + mustache + sunglasses + hat condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3]):
                 apply_sprite(image, spr+"roboy_sunglasses_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
-            
+
             #roboy + mustache + sunglasses + rainbow condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
@@ -234,7 +260,7 @@ def cvloop(run_event):
             elif (SPRITES[0] and SPRITES[1] and SPRITES[2]):
                 apply_sprite(image, spr+"roboy_sunglasses_mustache.png",w+40,x-20,y-50, incl, ontop = False)
 
-           
+
             #roboy + mustache + crown + rainbow condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[5] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
@@ -243,7 +269,7 @@ def cvloop(run_event):
             elif (SPRITES[0] and SPRITES[1] and SPRITES[5]):
                 apply_sprite(image, spr+"roboy_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
-           
+
             #roboy + mustache + hat + rainbow condition
             elif (SPRITES[0] and SPRITES[1] and SPRITES[3] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
@@ -252,7 +278,7 @@ def cvloop(run_event):
             elif (SPRITES[0] and SPRITES[1] and SPRITES[3]):
                 apply_sprite(image, spr+"roboy_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
-            
+
             #roboy + sunglasses + crown + rainbow condition
             elif (SPRITES[0] and SPRITES[2] and SPRITES[5] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
@@ -261,7 +287,7 @@ def cvloop(run_event):
             elif (SPRITES[0] and SPRITES[2] and SPRITES[5]):
                 apply_sprite(image, spr+"roboy_sunglasses_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
-            
+
             #roboy + sunglasses + hat + rainbow condition
             elif (SPRITES[0] and SPRITES[2] and SPRITES[3] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
@@ -270,7 +296,7 @@ def cvloop(run_event):
             elif (SPRITES[0] and SPRITES[2] and SPRITES[3]):
                 apply_sprite(image, spr+"roboy_sunglasses_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
-            
+
              #roboy + mustache + rainbow condition
             elif (SPRITES[1] and SPRITES[0] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
@@ -279,34 +305,34 @@ def cvloop(run_event):
             elif (SPRITES[1] and SPRITES[0]):
                 apply_sprite(image, spr+"roboy_mustache.png",w+40,x-20,y-50, incl, ontop = False)
 
-            
+
             #roboy + sunglasses + rainbow condition
             elif (SPRITES[0] and SPRITES[2] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_sunglasses_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
-            
+
             #roboy + sunglasses condition
             elif (SPRITES[0] and SPRITES[2]):
                 apply_sprite(image, spr+"roboy_sunglasses.png",w+40,x-20,y-50, incl, ontop = False)
-            
-            
+
+
             #roboy + hat + rainbow condition
             elif (SPRITES[0] and SPRITES[3] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
-            
+
             #roboy + hat condition
             elif (SPRITES[0] and SPRITES[3]):
                 apply_sprite(image, spr+"roboy_hat.png",w+38,x-20,y-70, incl, ontop = False)
-            
-            
+
+
             #roboy + crown + rainbow condition
             elif (SPRITES[0] and SPRITES[5] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
-            
+
             #roboy + crown condition
             elif (SPRITES[0] and SPRITES[5]):
                 apply_sprite(image, spr+"roboy_crown.png",w+35,x-18,y-85, incl, ontop = False)
-            
-            
+
+
             #roboy + rainbow condition
             elif (SPRITES[0] and is_mouth_open):
                 apply_sprite_rainbow(image, spr+"roboy_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
@@ -315,11 +341,11 @@ def cvloop(run_event):
             elif SPRITES[0]:
                 apply_sprite(image, spr+"roboy.png",w+40,x-20,y-50, incl, ontop = False)
 
-            
-            else:
-                if (is_mouth_open and not SPRITES[0]):
-                    (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
-                    apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
+
+            # else:
+            #     if (is_mouth_open and not SPRITES[0]):
+            #         (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
+            #         apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
 
 
             #flies condition
@@ -329,17 +355,20 @@ def cvloop(run_event):
                 apply_sprite(image, dir_+flies[i],w,x,y, incl)
                 i+=1
                 i = 0 if i >= len(flies) else i #when done with all images of that folder, begin again
-		       	
-     
+
+
         # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if save:
+            cv2.imwrite('test.jpeg', image)
+            save = False
         # conerts to PIL format
-        image = Image.fromarray(image)
+        # image = Image.fromarray(image)
         # Converts to a TK format to visualize it in the GUI
-        image = ImageTk.PhotoImage(image)
+        # image = ImageTk.PhotoImage(image)
         # Actualize the image in the panel to show it
-        panelA.configure(image=image)
-        panelA.image = image
+        # panelA.configure(image=image)
+        # panelA.image = image
 
     video_capture.release()
 
@@ -349,25 +378,25 @@ rospack = rospkg.RosPack()
 path = rospack.get_path('roboy_snapchat_filter')
 
 # Initialize GUI object
-root = Tk()
-root.title("ROBOY SNAPCHAT FILTERS")
+# root = Tk()
+# root.title("ROBOY SNAPCHAT FILTERS")
 
 # Adds a custom logo
-imgicon = PhotoImage(file= path + '/sprites/roboy_sunglasses_mustache_crown.png')
+# imgicon = PhotoImage(file= path + '/sprites/roboy_sunglasses_mustache_crown.png')
 
-root.tk.call('wm', 'iconphoto', root._w, imgicon)
+# root.tk.call('wm', 'iconphoto', root._w, imgicon)
 
 # Create the panel where webcam image will be shown
-panelA = Label(root)
-panelA.pack( padx=10, pady=10)
+# panelA = Label(root)
+# panelA.pack( padx=10, pady=10)
 
 # Variable to control which sprite you want to visualize
 SPRITES = [0,0,0,0,0,0] #roboy, mustache, sunglasses, flies, crown -> 1 is visible, 0 is not visible
 
 # Creates a thread where the magic ocurs
-run_event = threading.Event()
-run_event.set()
-action = Thread(target=cvloop, args=(run_event,))
+# run_event = threading.Event()
+# run_event.set()
+action = Thread(target=cvloop, args=())
 action.setDaemon(True)
 action.start()
 
@@ -383,5 +412,5 @@ def terminate():
         print "All closed!"
 
 # When the GUI is closed it actives the terminate function
-root.protocol("WM_DELETE_WINDOW", terminate)
-root.mainloop() #creates loop of GUI
+# root.protocol("WM_DELETE_WINDOW", terminate)
+# root.mainloop() #creates loop of GUI

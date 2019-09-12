@@ -9,14 +9,14 @@
   <license>BSD</license>
 
   <buildtool_depend>catkin</buildtool_depend>
-  
+
   <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>roboy_communication_cognition</build_depend>
+  <build_depend>roboy_cognition_msgs</build_depend>
 
   <run_depend>rospy</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>message_runtime</run_depend>
-  <run_depend>roboy_communication_cognition</run_depend>
+  <run_depend>roboy_cognition_msgs</run_depend>
 
 </package>
