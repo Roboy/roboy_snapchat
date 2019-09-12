@@ -3,9 +3,9 @@
 # Requirements:
 # pip install tk
 # pip install pillow
-from Tkinter import *
-from PIL import Image
-from PIL import ImageTk
+#from Tkinter import *
+#from PIL import Image
+#from PIL import ImageTk
 import cv2, threading, os, time
 from threading import Thread
 from os import listdir
