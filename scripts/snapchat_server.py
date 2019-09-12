@@ -41,10 +41,10 @@ def handleRequest(req):
     return True
 
 def callback(msg):
-    global save
+    global flash
     if msg.data == "cheese":
-        print("saved to file")
-        save = True
+        print("flashd to file")
+        flash = True
 
     else:
         print ("Chosen filter: "+msg.data)
@@ -64,7 +64,7 @@ def callback(msg):
 
 def snapchat_server():
 	rospy.init_node('snapchat_server'); rospy.Subscriber("/roboy/cognition/apply_filter", String, callback)
-	server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
+	server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest);global ledscolor;ledscolor = rospy.Publisher('/roboy/control/matrix/leds/color', String, queue_size=1)
 	print("Ready for Snapchat")
 	rospy.spin()
 
@@ -171,7 +171,9 @@ def cvloop():
     global panelA
     global SPRITES
     global path
-    global save
+    global flash
+    global ledscolor
+    flash = False
     save = False
 
     rospack = rospkg.RosPack()
@@ -183,6 +185,8 @@ def cvloop():
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
     video_capture = cv2.VideoCapture(-1) #read from webcam
+    video_capture.set(cv2.CAP_PROP_FPS, 2.0)
+    print(video_capture.get(cv2.CAP_PROP_FPS))
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
     #Filters path
@@ -193,11 +197,23 @@ def cvloop():
     print("[INFO] loading Roboy Snapchat Filter ...")
     model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-
-
+    flash_timestamp = 0
     # while run_event.is_set(): #while the thread is active we loop
     while True:
+        if flash:
+            print("flashed")
+            ledscolor.publish("white")
+            save = True
+            flash_timestamp = time.time()
+            flash = False
+        #
+        # if time.time() - flash_timestamp > 1:
+        #     print("turned off flash")
+        #     ledscolor.publish("black")
+            # time.sleep(1.5)
+        # print("reading")
         ret, image = video_capture.read()
+
         #image = imutils.resize(image, width=3000)
         # image = image[0:376, 0:500]
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -359,9 +375,13 @@ def cvloop():
 
         # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        if save:
+        # if save:
+        if save and time.time() - flash_timestamp > 0.2:
+            print("saved img")
             cv2.imwrite('test.jpeg', image)
+            ledscolor.publish("black")
             save = False
+            flash = False
         # conerts to PIL format
         # image = Image.fromarray(image)
         # Converts to a TK format to visualize it in the GUI
@@ -396,6 +416,8 @@ SPRITES = [0,0,0,0,0,0] #roboy, mustache, sunglasses, flies, crown -> 1 is visib
 # Creates a thread where the magic ocurs
 # run_event = threading.Event()
 # run_event.set()
+
+
 action = Thread(target=cvloop, args=())
 action.setDaemon(True)
 action.start()
