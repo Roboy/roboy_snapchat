@@ -11,7 +11,7 @@ from threading import Thread
 from os import listdir
 from os.path import isfile, join
 import rospkg
-
+import Queue
 
 import dlib
 #import imutils
@@ -22,6 +22,32 @@ import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
 from std_msgs.msg import String
 
+
+# bufferless VideoCapture
+class VideoCapture:
+
+  def __init__(self, name):
+    self.cap = cv2.VideoCapture(name)
+    self.q = Queue.Queue()
+    t = Thread(target=self._reader)
+    t.daemon = True
+    t.start()
+
+  # read frames as soon as they are available, keeping only most recent one
+  def _reader(self):
+    while True:
+      ret, frame = self.cap.read()
+      if not ret:
+        break
+      if not self.q.empty():
+        try:
+          self.q.get_nowait()   # discard previous (unprocessed) frame
+        except Queue.Empty:
+          pass
+      self.q.put(frame)
+
+  def read(self):
+    return self.q.get()
 
 def handleRequest(req):
     print ("Chosen filter: "+req.name)
@@ -185,11 +211,9 @@ def cvloop():
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
-    video_capture = cv2.VideoCapture(-1) #read from webcam
-    print(video_capture.get(cv2.CAP_PROP_BUFFERSIZE))
-    video_capture.set(cv2.CAP_PROP_BUFFERSIZE, 0)
-    #video_capture.set(cv2.CAP_PROP_FPS, 10.0)
-    print(video_capture.get(cv2.CAP_PROP_FPS))
+    video_capture = VideoCapture(-1) #read from webcam
+    # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
+    # print(video_capture.get(cv2.CAP_PROP_FPS))
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
     #Filters path
@@ -205,7 +229,7 @@ def cvloop():
     while True:
         if flash:
             print("flashed")
-            #ledscolor.publish("white")
+            ledscolor.publish("white")
             save = True
             flash_timestamp = time.time()
             flash = False
@@ -214,8 +238,8 @@ def cvloop():
         #     print("turned off flash")
         #     ledscolor.publish("black")
             # time.sleep(1.5)
-        print("reading")
-        ret, image = video_capture.read()
+        # print("reading")
+        image = video_capture.read()
 
         #image = imutils.resize(image, width=3000)
         # image = image[0:376, 0:500]
@@ -379,7 +403,7 @@ def cvloop():
         # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # if save:
-        if save and time.time() - flash_timestamp > 2:
+        if save and time.time() - flash_timestamp > 0.2:
             print("saved img")
             cv2.imwrite('test.jpeg', image)
             ledscolor.publish("black")
