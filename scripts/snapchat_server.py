@@ -43,6 +43,7 @@ def handleRequest(req):
 def callback(msg):
     global flash
     if msg.data == "cheese":
+        ledscolor.publish("white")
         print("flashd to file")
         flash = True
 
@@ -185,7 +186,9 @@ def cvloop():
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
     video_capture = cv2.VideoCapture(-1) #read from webcam
-    video_capture.set(cv2.CAP_PROP_FPS, 2.0)
+    print(video_capture.get(cv2.CAP_PROP_BUFFERSIZE))
+    video_capture.set(cv2.CAP_PROP_BUFFERSIZE, 0)
+    #video_capture.set(cv2.CAP_PROP_FPS, 10.0)
     print(video_capture.get(cv2.CAP_PROP_FPS))
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
@@ -202,7 +205,7 @@ def cvloop():
     while True:
         if flash:
             print("flashed")
-            ledscolor.publish("white")
+            #ledscolor.publish("white")
             save = True
             flash_timestamp = time.time()
             flash = False
@@ -211,7 +214,7 @@ def cvloop():
         #     print("turned off flash")
         #     ledscolor.publish("black")
             # time.sleep(1.5)
-        # print("reading")
+        print("reading")
         ret, image = video_capture.read()
 
         #image = imutils.resize(image, width=3000)
@@ -376,7 +379,7 @@ def cvloop():
         # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # if save:
-        if save and time.time() - flash_timestamp > 0.2:
+        if save and time.time() - flash_timestamp > 2:
             print("saved img")
             cv2.imwrite('test.jpeg', image)
             ledscolor.publish("black")
