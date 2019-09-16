@@ -190,7 +190,7 @@ def cvloop():
     video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
     print_height = 720
-    print_width = 108
+    print_width = 1080
     video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     # print(video_capture.get(cv2.CAP_PROP_FPS))
@@ -204,36 +204,20 @@ def cvloop():
     print("[INFO] loading Roboy Snapchat Filter ...")
     model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
-    flash_timestamp = 0
-    i = 0
+
     # while run_event.is_set(): #while the thread is active we loop
     while True:
         ret, im = video_capture.read()
-        #image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2
-        #r = cv2.selectROI(im)
-        #image  = im[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
-        image = im[0:110, 100:180].copy()
+        image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
         if flash:
-            print("flashed")
             ledscolor.publish("white")
             save = True
             flash_timestamp = time.time()
             flash = False
-            i = 10
 
-            #
-            # if time.time() - flash_timestamp > 1:
-            #     print("turned off flash")
-            #     ledscolor.publish("black")
-                # time.sleep(1.5)
-            # print("reading")
-            ret, image = video_capture.read()
-
-            #image = imutils.resize(image, width=3000)
-            # image = image[0:376, 0:500]
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             faces = detector(gray, 0)
-
+            ledscolor.publish("black")
             for face in faces: #if there are faces
                 (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
                 # *** Facial Landmarks detection
@@ -388,19 +372,13 @@ def cvloop():
                     i = 0 if i >= len(flies) else i #when done with all images of that folder, begin again
 
 
-            # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
-            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-            # if save:
+                # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
+                # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                # if save:
 
-            #if i > 0:
-            #    cv2.imwrite("test"+str(i)+".jpeg", image)
-            #    i -= 1
-            #    print("save img " + str(i))
 
-            # if save and time.time() - flash_timestamp > 1.0:
             print("saved img")
             cv2.imwrite('test.jpeg', image)
-            ledscolor.publish("black")
             save = False
             flash = False
         # conerts to PIL format
