@@ -23,32 +23,6 @@ from roboy_cognition_msgs.srv import ApplyFilter
 from std_msgs.msg import String
 
 
-# bufferless VideoCapture
-class VideoCapture:
-
-  def __init__(self, name):
-    self.cap = cv2.VideoCapture(name)
-    self.q = Queue.Queue()
-    t = Thread(target=self._reader)
-    t.daemon = True
-    t.start()
-
-  # read frames as soon as they are available, keeping only most recent one
-  def _reader(self):
-    while True:
-      ret, frame = self.cap.read()
-      if not ret:
-        break
-      if not self.q.empty():
-        try:
-          self.q.get_nowait()   # discard previous (unprocessed) frame
-        except Queue.Empty:
-          pass
-      self.q.put(frame)
-
-  def read(self):
-    return self.q.get()
-
 def handleRequest(req):
     print ("Chosen filter: "+req.name)
 
@@ -67,9 +41,9 @@ def handleRequest(req):
     return True
 
 def callback(msg):
+    print("msg arrived")
     global flash
     if msg.data == "cheese":
-        time.sleep(3)
         ledscolor.publish("white")
         print("flashd to file")
         flash = True
@@ -229,6 +203,7 @@ def cvloop():
     i = 0
     # while run_event.is_set(): #while the thread is active we loop
     while True:
+        ret, image = video_capture.read()
         if flash:
             print("flashed")
             ledscolor.publish("white")
@@ -236,184 +211,184 @@ def cvloop():
             flash_timestamp = time.time()
             flash = False
             i = 10
-            
-        #
-        # if time.time() - flash_timestamp > 1:
-        #     print("turned off flash")
-        #     ledscolor.publish("black")
-            # time.sleep(1.5)
-        # print("reading")
-        ret, image = video_capture.read()
 
-        #image = imutils.resize(image, width=3000)
-        # image = image[0:376, 0:500]
-        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        faces = detector(gray, 0)
+            #
+            # if time.time() - flash_timestamp > 1:
+            #     print("turned off flash")
+            #     ledscolor.publish("black")
+                # time.sleep(1.5)
+            # print("reading")
+            ret, image = video_capture.read()
 
-        for face in faces: #if there are faces
-            (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
-            # *** Facial Landmarks detection
-            shape = predictor(gray, face)
-            shape = face_utils.shape_to_np(shape)
-            incl = calculate_inclination(shape[17], shape[26]) #inclination based on eyebrows
+            #image = imutils.resize(image, width=3000)
+            # image = image[0:376, 0:500]
+            gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            faces = detector(gray, 0)
 
-            # condition to see if mouth is open
-            is_mouth_open = (shape[66][1] -shape[62][1]) >= 10 #y coordiantes of landmark points of lips
+            for face in faces: #if there are faces
+                (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
+                # *** Facial Landmarks detection
+                shape = predictor(gray, face)
+                shape = face_utils.shape_to_np(shape)
+                incl = calculate_inclination(shape[17], shape[26]) #inclination based on eyebrows
 
-
-            #mustache condition
-            if (SPRITES[1] and not SPRITES[0]):
-                (x1,y1,w1,h1) = get_face_boundbox(shape, 6)
-                apply_sprite(image, spr+"mustache.png",w1+10,x1-5,y1+5, incl)
-
-            #pixelated sunglasses condition
-            if (SPRITES[2] and not SPRITES[0]):
-                (x3,y3,_,h3) = get_face_boundbox(shape, 1)
-                apply_sprite(image, spr+"pixelated_sunglasses.png",w,x,y3, incl, ontop = False)
-
-             #crown condition
-            if (SPRITES[5] and not SPRITES[0]):
-                apply_sprite(image, spr+"crown.png",w+30,x-20,y, incl)
-
-            #hat condition
-            if (SPRITES[3] and not SPRITES[0] and not SPRITES[5]):
-                apply_sprite(image, spr+"hat.png",w+30,x-20,y, incl)
+                # condition to see if mouth is open
+                is_mouth_open = (shape[66][1] -shape[62][1]) >= 10 #y coordiantes of landmark points of lips
 
 
+                #mustache condition
+                if (SPRITES[1] and not SPRITES[0]):
+                    (x1,y1,w1,h1) = get_face_boundbox(shape, 6)
+                    apply_sprite(image, spr+"mustache.png",w1+10,x1-5,y1+5, incl)
 
-            #roboy + mustache + sunglasses + crown + rainbow condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
+                #pixelated sunglasses condition
+                if (SPRITES[2] and not SPRITES[0]):
+                    (x3,y3,_,h3) = get_face_boundbox(shape, 1)
+                    apply_sprite(image, spr+"pixelated_sunglasses.png",w,x,y3, incl, ontop = False)
 
-            #roboy + mustache + sunglasses + crown condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5]):
-                apply_sprite(image, spr+"roboy_sunglasses_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
+                 #crown condition
+                if (SPRITES[5] and not SPRITES[0]):
+                    apply_sprite(image, spr+"crown.png",w+30,x-20,y, incl)
 
-
-            #roboy + mustache + sunglasses + hat + rainbow condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
-
-            #roboy + mustache + sunglasses + hat condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3]):
-                apply_sprite(image, spr+"roboy_sunglasses_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
-
-
-            #roboy + mustache + sunglasses + rainbow condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
-
-            #roboy + mustache + sunglasses condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[2]):
-                apply_sprite(image, spr+"roboy_sunglasses_mustache.png",w+40,x-20,y-50, incl, ontop = False)
+                #hat condition
+                if (SPRITES[3] and not SPRITES[0] and not SPRITES[5]):
+                    apply_sprite(image, spr+"hat.png",w+30,x-20,y, incl)
 
 
-            #roboy + mustache + crown + rainbow condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[5] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
 
-            #roboy + mustache + crown condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[5]):
-                apply_sprite(image, spr+"roboy_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
+                #roboy + mustache + sunglasses + crown + rainbow condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
 
-
-            #roboy + mustache + hat + rainbow condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[3] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
-
-            #roboy + mustache + hat condition
-            elif (SPRITES[0] and SPRITES[1] and SPRITES[3]):
-                apply_sprite(image, spr+"roboy_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
+                #roboy + mustache + sunglasses + crown condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[5]):
+                    apply_sprite(image, spr+"roboy_sunglasses_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
 
-            #roboy + sunglasses + crown + rainbow condition
-            elif (SPRITES[0] and SPRITES[2] and SPRITES[5] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
+                #roboy + mustache + sunglasses + hat + rainbow condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
 
-            #roboy + sunglasses + crown condition
-            elif (SPRITES[0] and SPRITES[2] and SPRITES[5]):
-                apply_sprite(image, spr+"roboy_sunglasses_crown.png",w+35,x-18,y-85, incl, ontop = False)
-
-
-            #roboy + sunglasses + hat + rainbow condition
-            elif (SPRITES[0] and SPRITES[2] and SPRITES[3] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
-
-            #roboy + sunglasses + hat condition
-            elif (SPRITES[0] and SPRITES[2] and SPRITES[3]):
-                apply_sprite(image, spr+"roboy_sunglasses_hat.png",w+38,x-20,y-70, incl, ontop = False)
+                #roboy + mustache + sunglasses + hat condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and SPRITES[3]):
+                    apply_sprite(image, spr+"roboy_sunglasses_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
 
-             #roboy + mustache + rainbow condition
-            elif (SPRITES[1] and SPRITES[0] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
+                #roboy + mustache + sunglasses + rainbow condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
 
-            #roboy + mustache condition
-            elif (SPRITES[1] and SPRITES[0]):
-                apply_sprite(image, spr+"roboy_mustache.png",w+40,x-20,y-50, incl, ontop = False)
-
-
-            #roboy + sunglasses + rainbow condition
-            elif (SPRITES[0] and SPRITES[2] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_sunglasses_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
-
-            #roboy + sunglasses condition
-            elif (SPRITES[0] and SPRITES[2]):
-                apply_sprite(image, spr+"roboy_sunglasses.png",w+40,x-20,y-50, incl, ontop = False)
+                #roboy + mustache + sunglasses condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[2]):
+                    apply_sprite(image, spr+"roboy_sunglasses_mustache.png",w+40,x-20,y-50, incl, ontop = False)
 
 
-            #roboy + hat + rainbow condition
-            elif (SPRITES[0] and SPRITES[3] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
+                #roboy + mustache + crown + rainbow condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[5] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_mustache_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
 
-            #roboy + hat condition
-            elif (SPRITES[0] and SPRITES[3]):
-                apply_sprite(image, spr+"roboy_hat.png",w+38,x-20,y-70, incl, ontop = False)
-
-
-            #roboy + crown + rainbow condition
-            elif (SPRITES[0] and SPRITES[5] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
-
-            #roboy + crown condition
-            elif (SPRITES[0] and SPRITES[5]):
-                apply_sprite(image, spr+"roboy_crown.png",w+35,x-18,y-85, incl, ontop = False)
+                #roboy + mustache + crown condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[5]):
+                    apply_sprite(image, spr+"roboy_mustache_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
 
-            #roboy + rainbow condition
-            elif (SPRITES[0] and is_mouth_open):
-                apply_sprite_rainbow(image, spr+"roboy_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
+                #roboy + mustache + hat + rainbow condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[3] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_mustache_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
 
-            #roboy condition
-            elif SPRITES[0]:
-                apply_sprite(image, spr+"roboy.png",w+40,x-20,y-50, incl, ontop = False)
-
-
-            # else:
-            #     if (is_mouth_open and not SPRITES[0]):
-            #         (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
-            #         apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
+                #roboy + mustache + hat condition
+                elif (SPRITES[0] and SPRITES[1] and SPRITES[3]):
+                    apply_sprite(image, spr+"roboy_mustache_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
 
-            #flies condition
-            if (SPRITES[4]):
-                #to make the "animation" we read each time a different image of that folder
-                # the images are placed in the correct order to give the animation impresion
-                apply_sprite(image, dir_+flies[i],w,x,y, incl)
-                i+=1
-                i = 0 if i >= len(flies) else i #when done with all images of that folder, begin again
+                #roboy + sunglasses + crown + rainbow condition
+                elif (SPRITES[0] and SPRITES[2] and SPRITES[5] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
+
+                #roboy + sunglasses + crown condition
+                elif (SPRITES[0] and SPRITES[2] and SPRITES[5]):
+                    apply_sprite(image, spr+"roboy_sunglasses_crown.png",w+35,x-18,y-85, incl, ontop = False)
 
 
-        # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
-        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # if save:
+                #roboy + sunglasses + hat + rainbow condition
+                elif (SPRITES[0] and SPRITES[2] and SPRITES[3] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
 
-        #if i > 0:
-        #    cv2.imwrite("test"+str(i)+".jpeg", image)
-        #    i -= 1
-        #    print("save img " + str(i))
+                #roboy + sunglasses + hat condition
+                elif (SPRITES[0] and SPRITES[2] and SPRITES[3]):
+                    apply_sprite(image, spr+"roboy_sunglasses_hat.png",w+38,x-20,y-70, incl, ontop = False)
 
-        if save and time.time() - flash_timestamp > 1.0:
+
+                 #roboy + mustache + rainbow condition
+                elif (SPRITES[1] and SPRITES[0] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_mustache_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
+
+                #roboy + mustache condition
+                elif (SPRITES[1] and SPRITES[0]):
+                    apply_sprite(image, spr+"roboy_mustache.png",w+40,x-20,y-50, incl, ontop = False)
+
+
+                #roboy + sunglasses + rainbow condition
+                elif (SPRITES[0] and SPRITES[2] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_sunglasses_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
+
+                #roboy + sunglasses condition
+                elif (SPRITES[0] and SPRITES[2]):
+                    apply_sprite(image, spr+"roboy_sunglasses.png",w+40,x-20,y-50, incl, ontop = False)
+
+
+                #roboy + hat + rainbow condition
+                elif (SPRITES[0] and SPRITES[3] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_hat_rainbow.png",w+40,x-17,y-65, incl, ontop = False)
+
+                #roboy + hat condition
+                elif (SPRITES[0] and SPRITES[3]):
+                    apply_sprite(image, spr+"roboy_hat.png",w+38,x-20,y-70, incl, ontop = False)
+
+
+                #roboy + crown + rainbow condition
+                elif (SPRITES[0] and SPRITES[5] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_crown_rainbow.png",w+35,x-15,y-85, incl, ontop = False)
+
+                #roboy + crown condition
+                elif (SPRITES[0] and SPRITES[5]):
+                    apply_sprite(image, spr+"roboy_crown.png",w+35,x-18,y-85, incl, ontop = False)
+
+
+                #roboy + rainbow condition
+                elif (SPRITES[0] and is_mouth_open):
+                    apply_sprite_rainbow(image, spr+"roboy_rainbow.png",w+35,x-15,y-45, incl, ontop = False)
+
+                #roboy condition
+                elif SPRITES[0]:
+                    apply_sprite(image, spr+"roboy.png",w+40,x-20,y-50, incl, ontop = False)
+
+
+                # else:
+                #     if (is_mouth_open and not SPRITES[0]):
+                #         (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
+                #         apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
+
+
+                #flies condition
+                if (SPRITES[4]):
+                    #to make the "animation" we read each time a different image of that folder
+                    # the images are placed in the correct order to give the animation impresion
+                    apply_sprite(image, dir_+flies[i],w,x,y, incl)
+                    i+=1
+                    i = 0 if i >= len(flies) else i #when done with all images of that folder, begin again
+
+
+            # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
+            # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            # if save:
+
+            #if i > 0:
+            #    cv2.imwrite("test"+str(i)+".jpeg", image)
+            #    i -= 1
+            #    print("save img " + str(i))
+
+            # if save and time.time() - flash_timestamp > 1.0:
             print("saved img")
             cv2.imwrite('test.jpeg', image)
             ledscolor.publish("black")
