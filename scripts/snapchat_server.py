@@ -6,6 +6,7 @@
 #from Tkinter import *
 #from PIL import Image
 #from PIL import ImageTk
+import numpy as np
 import cv2, threading, os, time
 from threading import Thread
 from os import listdir
@@ -188,6 +189,10 @@ def cvloop():
     i = 0
     video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
+    print_height = 720
+    print_width = 108
+    video_capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    video_capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
     # print(video_capture.get(cv2.CAP_PROP_FPS))
     (x,y,w,h) = (0,0,10,10) #whatever initial values
 
@@ -203,7 +208,11 @@ def cvloop():
     i = 0
     # while run_event.is_set(): #while the thread is active we loop
     while True:
-        ret, image = video_capture.read()
+        ret, im = video_capture.read()
+        #image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2
+        #r = cv2.selectROI(im)
+        #image  = im[int(r[1]):int(r[1]+r[3]), int(r[0]):int(r[0]+r[2])]
+        image = im[0:110, 100:180].copy()
         if flash:
             print("flashed")
             ledscolor.publish("white")
