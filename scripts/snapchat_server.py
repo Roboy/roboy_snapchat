@@ -69,6 +69,7 @@ def handleRequest(req):
 def callback(msg):
     global flash
     if msg.data == "cheese":
+        time.sleep(3)
         ledscolor.publish("white")
         print("flashd to file")
         flash = True
@@ -211,7 +212,7 @@ def cvloop():
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
     i = 0
-    video_capture = VideoCapture(-1) #read from webcam
+    video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
     # print(video_capture.get(cv2.CAP_PROP_FPS))
     (x,y,w,h) = (0,0,10,10) #whatever initial values
@@ -225,6 +226,7 @@ def cvloop():
     model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
     flash_timestamp = 0
+    i = 0
     # while run_event.is_set(): #while the thread is active we loop
     while True:
         if flash:
@@ -233,13 +235,15 @@ def cvloop():
             save = True
             flash_timestamp = time.time()
             flash = False
+            i = 10
+            
         #
         # if time.time() - flash_timestamp > 1:
         #     print("turned off flash")
         #     ledscolor.publish("black")
             # time.sleep(1.5)
         # print("reading")
-        image = video_capture.read()
+        ret, image = video_capture.read()
 
         #image = imutils.resize(image, width=3000)
         # image = image[0:376, 0:500]
@@ -403,7 +407,13 @@ def cvloop():
         # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         # if save:
-        if save and time.time() - flash_timestamp > 0.2:
+
+        #if i > 0:
+        #    cv2.imwrite("test"+str(i)+".jpeg", image)
+        #    i -= 1
+        #    print("save img " + str(i))
+
+        if save and time.time() - flash_timestamp > 1.0:
             print("saved img")
             cv2.imwrite('test.jpeg', image)
             ledscolor.publish("black")
@@ -450,7 +460,7 @@ action.setDaemon(True)
 action.start()
 
 snapchat_server()
-
+#cvloop()
 # Function to close all properly, aka threads and GUI
 def terminate():
         global root, run_event, action
