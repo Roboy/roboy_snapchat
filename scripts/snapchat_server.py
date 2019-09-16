@@ -45,6 +45,7 @@ def callback(msg):
     print("msg arrived")
     global flash
     if msg.data == "cheese":
+        #time.sleep(1)
         ledscolor.publish("white")
         print("flashd to file")
         flash = True
@@ -207,17 +208,19 @@ def cvloop():
 
     # while run_event.is_set(): #while the thread is active we loop
     while True:
-        ret, im = video_capture.read()
-        image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
+        ret, image = video_capture.read()
+        #image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
         if flash:
+            #video_capture.read()
             ledscolor.publish("white")
             save = True
             flash_timestamp = time.time()
             flash = False
-
+            ret, im = video_capture.read()
+            image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             faces = detector(gray, 0)
-            ledscolor.publish("black")
+            #ledscolor.publish("black")
             for face in faces: #if there are faces
                 (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
                 # *** Facial Landmarks detection
@@ -379,6 +382,7 @@ def cvloop():
 
             print("saved img")
             cv2.imwrite('test.jpeg', image)
+            ledscolor.publish("black")
             save = False
             flash = False
         # conerts to PIL format
