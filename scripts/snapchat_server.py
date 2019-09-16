@@ -23,6 +23,9 @@ import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
 from std_msgs.msg import String
 
+from paramiko import SSHClient
+from scp import SCPClient
+
 
 def handleRequest(req):
     print ("Chosen filter: "+req.name)
@@ -187,7 +190,18 @@ def cvloop():
     spr = path + "/sprites/"
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
-    i = 0
+
+    ssh_info = {
+        'hostname': os.environ.get('SCP_HOSTNAME'),
+        'port': int(os.environ.get('SCP_PORT')),
+        'username': os.environ.get('SCP_USERNAME'),
+    }
+    ssh = SSHClient()
+    ssh.load_system_host_keys()
+    ssh.connect(**ssh_info)
+
+    do_scp = True
+
     video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
     print_height = 720
@@ -206,12 +220,11 @@ def cvloop():
     model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
 
+    i = 0
     # while run_event.is_set(): #while the thread is active we loop
     while True:
         ret, image = video_capture.read()
-        #image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
         if flash:
-            #video_capture.read()
             ledscolor.publish("white")
             save = True
             flash_timestamp = time.time()
@@ -379,12 +392,18 @@ def cvloop():
                 # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
 
-
-            print("saved img")
-            cv2.imwrite('test.jpeg', image)
             ledscolor.publish("black")
+
+            filename = 'pic'+str(i).zfill(4)+'.jpeg'
+            print("saving img %s"%filename)
+            cv2.imwrite(filename, image)
+            if do_scp:
+                with SCPClient(ssh.get_transport()) as scp:
+                    scp.put(filename, '~/public_html/photoboy')
+
             save = False
             flash = False
+            i += 1
         # conerts to PIL format
         # image = Image.fromarray(image)
         # Converts to a TK format to visualize it in the GUI
