@@ -26,6 +26,37 @@ from std_msgs.msg import String
 from paramiko import SSHClient
 from scp import SCPClient
 
+import random
+import string
+
+import pyqrcode
+from PIL import Image
+
+import cups
+
+def randomString(stringLength=5):
+    """Generate a random string of fixed length """
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(stringLength))
+
+def generate_qr_png(url, logo='RoboyLogoCut.png', name='qr.png'):
+    url = pyqrcode.QRCode(url,error = 'H')
+    url.png('test.png',scale=15)
+    im = Image.open('test.png')
+    im = im.convert("RGB")
+    logo = Image.open(logo)
+    x = im.width/2 - im.width/6
+    y = im.width/2 + im.width/6
+    box = (x,x,y,y)
+    im.crop(box)
+    region = logo
+    region = region.resize((box[2] - box[0], box[3] - box[1]))
+    im.paste(region,box, mask=region)
+    im.save(name, "PNG")
+
+def print_photo(path, printer='Canon_CP910'):
+    conn = cups.Connection()
+    conn.printFile(printer, path, "", {})
 
 def handleRequest(req):
     print ("Chosen filter: "+req.name)
@@ -45,12 +76,10 @@ def handleRequest(req):
     return True
 
 def callback(msg):
-    print("msg arrived")
     global flash
     if msg.data == "cheese":
         #time.sleep(1)
         ledscolor.publish("white")
-        print("flashd to file")
         flash = True
 
     else:
@@ -69,11 +98,27 @@ def callback(msg):
         elif msg.data == "crown":
             put_sprite(5)
 
+def print_cb(msg):
+    print("printing %s"%msg.data.strip()+'.jpeg')
+    # print_photo(path=msg.data+'.jpeg')
+
 def snapchat_server():
-	rospy.init_node('snapchat_server'); rospy.Subscriber("/roboy/cognition/apply_filter", String, callback)
-	server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest);global ledscolor;ledscolor = rospy.Publisher('/roboy/control/matrix/leds/color', String, queue_size=1)
-	print("Ready for Snapchat")
-	rospy.spin()
+    rospy.init_node('snapchat_server')
+    rospy.Subscriber('/roboy/cognition/apply_filter', String, callback)
+    server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
+    rospy.Subscriber('/roboy/cognition/print_photo', String, print_cb)
+    global ledscolor
+    ledscolor = rospy.Publisher('/roboy/control/matrix/leds/color', String, queue_size=1)
+    print("Snapchat ready")
+    rospy.spin()
+
+
+# def snapchat_server():
+# 	rospy.init_node('snapchat_server'); rospy.Subscriber("/roboy/cognition/apply_filter", String, callback)
+# 	server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest);global ledscolor;ledscolor = rospy.Publisher('/roboy/control/matrix/leds/color', String, queue_size=1)
+#     # rospy.Subscriber("/roboy/cognition/print_photo", String, print_cb)
+#     print("Ready for Snapchat")
+# 	rospy.spin()
 
 ### Function to set wich sprite must be drawn
 def put_sprite(num):
@@ -201,6 +246,7 @@ def cvloop():
     ssh.connect(**ssh_info)
 
     do_scp = True
+    generate_qr = True
 
     video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
@@ -394,13 +440,19 @@ def cvloop():
 
             ledscolor.publish("black")
 
-            filename = 'pic'+str(i).zfill(4)+'.jpeg'
+            filename = randomString()
+            rospy.set_param('snapchat/latest_filename', filename)
+            # filename = 'pic'+str(i).zfill(4)+'.jpeg'
             print("saving img %s"%filename)
-            cv2.imwrite(filename, image)
+            cv2.imwrite(filename+'.jpeg', image)
             if do_scp:
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(filename, '~/public_html/photoboy')
+                qr = generate_qr_png(url='https://bot.roboy.org/%s'%filename+'.jpeg', name='qr_%s.png'%filename, logo=path+'/images/logo.png')
 
+                with SCPClient(ssh.get_transport()) as scp:
+                    scp.put(filename+'.jpeg', '/var/www/html')
+                    scp.put('qr_%s.png'%filename, '/var/www/html')
+
+                # print("scpd")
             save = False
             flash = False
             i += 1
