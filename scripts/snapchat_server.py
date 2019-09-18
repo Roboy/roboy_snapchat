@@ -77,7 +77,8 @@ def handleRequest(req):
 
 def callback(msg):
     global flash
-    if msg.data == "cheese":
+    m = msg.data.strip()
+    if m == "cheese":
         #time.sleep(1)
         ledscolor.publish("white")
         flash = True
@@ -85,22 +86,22 @@ def callback(msg):
     else:
         print ("Chosen filter: "+msg.data)
 
-        if msg.data == "roboy":
+        if m == "roboy":
             put_sprite(0)
-        elif msg.data == "mustache":
+        elif m == "mustache":
             put_sprite(1)
-        elif msg.data == "sunglasses":
+        elif m == "sunglasses":
             put_sprite(2)
-        elif msg.data == "hat":
+        elif m == "hat":
             put_sprite(3)
-        elif msg.data == "flies":
+        elif m == "flies":
             put_sprite(4)
-        elif msg.data == "crown":
+        elif m == "crown":
             put_sprite(5)
 
 def print_cb(msg):
     print("printing %s"%msg.data.strip()+'.jpeg')
-    # print_photo(path=msg.data+'.jpeg')
+    print_photo(path=msg.data.strip()+'.jpeg')
 
 def snapchat_server():
     rospy.init_node('snapchat_server')
@@ -419,10 +420,10 @@ def cvloop():
                     apply_sprite(image, spr+"roboy.png",w+40,x-20,y-50, incl, ontop = False)
 
 
-                # else:
-                #     if (is_mouth_open and not SPRITES[0]):
-                #         (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
-                #         apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
+                #else:
+                #    if (is_mouth_open and not SPRITES[0]):
+                #        (x0,y0,w0,h0) = get_face_boundbox(shape, 6) #bound box of mouth
+                #        apply_sprite(image, spr+"rainbow.png",w0,x0,y0, incl, ontop = False)
 
 
                 #flies condition
@@ -441,7 +442,7 @@ def cvloop():
             ledscolor.publish("black")
 
             filename = randomString()
-            rospy.set_param('snapchat/latest_filename', filename)
+            #rospy.set_param('snapchat/latest_filename', filename)
             # filename = 'pic'+str(i).zfill(4)+'.jpeg'
             print("saving img %s"%filename)
             cv2.imwrite(filename+'.jpeg', image)
@@ -456,6 +457,7 @@ def cvloop():
             save = False
             flash = False
             i += 1
+            rospy.set_param('snapchat/latest_filename', filename)
         # conerts to PIL format
         # image = Image.fromarray(image)
         # Converts to a TK format to visualize it in the GUI

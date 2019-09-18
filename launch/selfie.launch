@@ -1,6 +1,6 @@
 <launch>
 	<node name="roboy_snapchat_filter" pkg="roboy_snapchat_filter" type="snapchat_server.py" output="screen" />
-	<node name="selfie_hotwords" pkg="roboy_snapchat_filter" type="hotwords.py" args="$(find roboy_snapchat_filter)/resources/roboy.pmdl $(find roboy_snapchat_filter)/resources/cheese.pmdl" output="screen" />
+	<node name="selfie_hotwords" pkg="roboy_snapchat_filter" type="hotwords.py" output="screen" />
 	<node name="matrix_led_control" pkg="led_control" type="leds.py" output="screen" />
 
 </launch>

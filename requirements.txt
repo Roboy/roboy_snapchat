@@ -2,4 +2,4 @@ pyqrcode
 pypng
 paramiko
 scp
-cups
+pycups
