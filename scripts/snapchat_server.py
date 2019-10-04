@@ -14,6 +14,9 @@ from os.path import isfile, join
 import rospkg
 import Queue
 
+import websocket
+import pickle
+
 import dlib
 #import imutils
 from imutils import face_utils, rotate_bound
@@ -285,6 +288,20 @@ def cvloop():
             ledscolor.publish("black")
             faces = detector(gray, 0)
             #ledscolor.publish("black")
+            if len(faces) > 0:
+                import pdb; pdb.set_trace()
+
+                pickled_encodings = pickle.dumps((faces, bytes(), "abs"), protocol=2)
+                try:
+                    ws = websocket.create_connection("ws://bot.roboy.org:8765")
+                    ws.send_binary(pickled_encodings)
+                    pickled_results = ws.recv()
+                    ws.close()
+
+                    name, conf, nodes = pickle.loads(pickled_results)
+                    print(name)
+                except Exception, e:
+                    print("Error: " + str(e))
             for face in faces: #if there are faces
                 (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
                 # *** Facial Landmarks detection
