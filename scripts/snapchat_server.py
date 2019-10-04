@@ -273,12 +273,16 @@ def cvloop():
         ret, image = video_capture.read()
         if flash:
             ledscolor.publish("white")
+            for j in range(2):
+                video_capture.read()
+            #time.sleep(0.5)
             save = True
             flash_timestamp = time.time()
             flash = False
             ret, im = video_capture.read()
             image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            ledscolor.publish("black")
             faces = detector(gray, 0)
             #ledscolor.publish("black")
             for face in faces: #if there are faces
@@ -439,7 +443,7 @@ def cvloop():
                 # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
 
-            ledscolor.publish("black")
+            ledscolor.publish("blue")
 
             filename = randomString()
             #rospy.set_param('snapchat/latest_filename', filename)
