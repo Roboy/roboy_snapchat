@@ -124,6 +124,19 @@ def snapchat_server():
 #     print("Ready for Snapchat")
 # 	rospy.spin()
 
+def watermark_with_transparency(cv_image,
+                                logo,
+                                position=(20,575)):
+    base_image = Image.fromarray(cv_image)
+    watermark = Image.open(logo)
+    watermark = watermark.resize((100, 130))
+    width, height = base_image.size
+ 
+    transparent = Image.new('RGB', (width, height), (0,0,0,0))
+    transparent.paste(base_image, (0,0))
+    transparent.paste(watermark, position, mask=watermark)
+    return np.asarray(transparent)
+
 ### Function to set wich sprite must be drawn
 def put_sprite(num):
     global SPRITES
@@ -251,6 +264,7 @@ def cvloop():
 
     do_scp = True
     generate_qr = True
+    watermark = True
 
     video_capture = cv2.VideoCapture(-1) #read from webcam
     # video_capture.set(cv2.CAP_PROP_FPS, 1.0)
@@ -465,8 +479,12 @@ def cvloop():
             filename = randomString()
             #rospy.set_param('snapchat/latest_filename', filename)
             # filename = 'pic'+str(i).zfill(4)+'.jpeg'
+            if watermark:
+                image = watermark_with_transparency(cv_image=image, logo=path+'/images/white-logo.png')
+
             print("saving img %s"%filename)
-            cv2.imwrite(filename+'.jpeg', image)
+            cv2.imwrite(filename+'.jpeg', image)    
+            
             if do_scp:
                 qr = generate_qr_png(url='https://bot.roboy.org/%s'%filename+'.jpeg', name='qr_%s.png'%filename, logo=path+'/images/logo.png')
 
