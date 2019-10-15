@@ -9,6 +9,8 @@ from std_msgs.msg import String
 
 import rospkg
 
+import atexit
+
 interrupted = False
 
 
@@ -21,10 +23,20 @@ def interrupt_callback():
     global interrupted
     return interrupted
 
+def finish(detector):
+	detector.terminate()
+	print("Finished cleanly.")
+
+def shutdown():
+	global interrupted
+	interrupted = True	
+
+
 rospack = rospkg.RosPack()
 path = rospack.get_path('roboy_snapchat_filter') + '/resources/'
 models = [path+"roboy.pmdl", path+"cheese.pmdl"]
 rospy.init_node("snowboy")
+
 publisher = rospy.Publisher("/roboy/cognition/apply_filter", String, queue_size=1)
 
 def publish(string):
@@ -34,8 +46,11 @@ def publish(string):
 # capture SIGINT signal, e.g., Ctrl+C
 signal.signal(signal.SIGINT, signal_handler)
 
-sensitivity = [0.5]*len(models)
+
+sensitivity = [0.8]*len(models)
 detector = snowboydecoder.HotwordDetector(models, sensitivity=sensitivity)
+atexit.register(finish, detector)
+rospy.on_shutdown(shutdown)
 callbacks = [lambda: True,
              lambda: publish("cheese")]
 print('Listening... Press Ctrl+C to exit')
