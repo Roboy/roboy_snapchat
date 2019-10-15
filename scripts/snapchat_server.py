@@ -126,16 +126,19 @@ def snapchat_server():
 
 def watermark_with_transparency(cv_image,
                                 logo,
-                                position=(20,575)):
+                                position=(0,0)):
     base_image = Image.fromarray(cv_image)
     watermark = Image.open(logo)
-    watermark = watermark.resize((100, 130))
+    watermark = watermark.resize((1080,720))
     width, height = base_image.size
  
     transparent = Image.new('RGB', (width, height), (0,0,0,0))
     transparent.paste(base_image, (0,0))
     transparent.paste(watermark, position, mask=watermark)
-    return np.asarray(transparent)
+    open_cv_image = np.array(transparent) 
+    # Convert RGB to BGR 
+    open_cv_image = open_cv_image[:, :, ::-1].copy() 
+    return open_cv_image
 
 ### Function to set wich sprite must be drawn
 def put_sprite(num):
@@ -302,20 +305,20 @@ def cvloop():
             ledscolor.publish("black")
             faces = detector(gray, 0)
             #ledscolor.publish("black")
-            if len(faces) > 0:
-                import pdb; pdb.set_trace()
+            #if len(faces) > 0:
+            #    import pdb; pdb.set_trace()
 
-                pickled_encodings = pickle.dumps((faces, bytes(), "abs"), protocol=2)
-                try:
-                    ws = websocket.create_connection("ws://bot.roboy.org:8765")
-                    ws.send_binary(pickled_encodings)
-                    pickled_results = ws.recv()
-                    ws.close()
+            #    pickled_encodings = pickle.dumps((faces, bytes(), "abs"), protocol=2)
+            #    try:
+            #        ws = websocket.create_connection("ws://bot.roboy.org:8765")
+            #        ws.send_binary(pickled_encodings)
+            #        pickled_results = ws.recv()
+            #        ws.close()
 
-                    name, conf, nodes = pickle.loads(pickled_results)
-                    print(name)
-                except Exception, e:
-                    print("Error: " + str(e))
+            #        name, conf, nodes = pickle.loads(pickled_results)
+            #        print(name)
+            #    except Exception, e:
+            #        print("Error: " + str(e))
             for face in faces: #if there are faces
                 (x,y,w,h) = (face.left(), face.top(), face.width(), face.height())
                 # *** Facial Landmarks detection
@@ -480,7 +483,7 @@ def cvloop():
             #rospy.set_param('snapchat/latest_filename', filename)
             # filename = 'pic'+str(i).zfill(4)+'.jpeg'
             if watermark:
-                image = watermark_with_transparency(cv_image=image, logo=path+'/images/white-logo.png')
+                image = watermark_with_transparency(cv_image=image, logo=path+'/images/photo_border.png')
 
             print("saving img %s"%filename)
             cv2.imwrite(filename+'.jpeg', image)    

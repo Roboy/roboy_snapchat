@@ -1,0 +1,8 @@
+/*.jpeg
+/*.png
+/*.jpg
+!images/
+!resources/
+!filters/
+!sprites/
+!imgs/
