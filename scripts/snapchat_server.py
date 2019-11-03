@@ -124,6 +124,13 @@ def snapchat_server():
 #     print("Ready for Snapchat")
 # 	rospy.spin()
 
+def rotate(img, angle):
+    return cv2.flip(img, 0)
+    #(h,w) = img.shape[:2]
+    #center = (w/2, h/2)
+    #M = cv2.getRotationMatrix2D(center, angle, 1.0)
+    #return cv2.warpAffine(img, M, (h,w))
+
 def watermark_with_transparency(cv_image,
                                 logo,
                                 position=(0,0)):
@@ -300,6 +307,7 @@ def cvloop():
             flash_timestamp = time.time()
             flash = False
             ret, im = video_capture.read()
+            im = rotate(im,180)
             image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             ledscolor.publish("black")
@@ -474,7 +482,7 @@ def cvloop():
 
 
                 # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
-                # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+            #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
 
             ledscolor.publish("blue")
@@ -483,6 +491,7 @@ def cvloop():
             #rospy.set_param('snapchat/latest_filename', filename)
             # filename = 'pic'+str(i).zfill(4)+'.jpeg'
             if watermark:
+                image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 image = watermark_with_transparency(cv_image=image, logo=path+'/images/photo_border.png')
 
             print("saving img %s"%filename)
