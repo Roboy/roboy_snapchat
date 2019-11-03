@@ -24,6 +24,7 @@ import math
 
 import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
+from roboy_control_msgs.srv import PerformActions, PerformActionsRequest
 from std_msgs.msg import String, Empty
 import actionlib
 from roboy_control_msgs.msg import PerformMovementAction, PerformMovementGoal
@@ -111,19 +112,15 @@ def print_cb(msg):
 def start_callback(msg):
     global client, flash
     rospy.loginfo("Starting selfie")
-    move(client, 'shoulder_left_pic_up')
+    move('shoulder_left_pic_up')
     flash = True
 
 
 def snapchat_server():
     rospy.init_node('snapchat_server')
 
-    global client
-    client = actionlib.SimpleActionClient('shoulder_left_movement_server', PerformMovementAction)
-    rospy.loginfo("Waiting for shoulder_left_movement_server")
-    client.wait_for_server()
-    rospy.loginfo("Connected")
-    
+    global play_trajectory
+    play_trajectory = rospy.ServiceProxy('/roboy/control/PlayTrajectory', PerformActions)
     rospy.Subscriber('/roboy/cognition/selfie/start', Empty, start_callback)
     rospy.Subscriber('/roboy/cognition/apply_filter', String, callback)
     server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
@@ -261,11 +258,15 @@ def get_face_boundbox(points, face_part):
         (x,y,w,h) = calculate_boundbox(points[48:68]) #mouth
     return (x,y,w,h)
 
-def move(client, trajectory):
-    goal = PerformMovementGoal(action=trajectory)
-    rospy.set_param('trajectory_active', True)
-    client.send_goal(goal)
-    client.wait_for_result()
+def move(trajectory):
+    global play_trajectory
+    if type(trajectory) == str:
+        actions = [trajectory]
+    elif type(trajectory) == list:
+        actions = trajectory
+    else:
+        action = []
+    play_trajectory(actions)
 
 #Principal Loop where openCV (magic) ocurs
 def cvloop():
@@ -512,7 +513,7 @@ def cvloop():
                 # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
             #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
-            move(client, 'shoulder_left_pic_down')
+            move('shoulder_left_pic_down')
             rospy.set_param('trajectory_active', False)
             ledscolor.publish("blue")
 
