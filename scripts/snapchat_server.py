@@ -24,7 +24,9 @@ import math
 
 import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
-from std_msgs.msg import String
+from std_msgs.msg import String, Empty
+import actionlib
+from roboy_control_msgs.msg import PerformMovementAction, PerformMovementGoal
 
 from paramiko import SSHClient
 from scp import SCPClient
@@ -106,8 +108,23 @@ def print_cb(msg):
     print("printing %s"%msg.data.strip()+'.jpeg')
     print_photo(path=msg.data.strip()+'.jpeg')
 
+def start_callback(msg):
+    global client, flash
+    rospy.loginfo("Starting selfie")
+    move(client, 'shoulder_left_pic_up')
+    flash = True
+
+
 def snapchat_server():
     rospy.init_node('snapchat_server')
+
+    global client
+    client = actionlib.SimpleActionClient('shoulder_left_movement_server', PerformMovementAction)
+    rospy.loginfo("Waiting for shoulder_left_movement_server")
+    client.wait_for_server()
+    rospy.loginfo("Connected")
+    
+    rospy.Subscriber('/roboy/cognition/selfie/start', Empty, start_callback)
     rospy.Subscriber('/roboy/cognition/apply_filter', String, callback)
     server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
     rospy.Subscriber('/roboy/cognition/print_photo', String, print_cb)
@@ -138,13 +155,13 @@ def watermark_with_transparency(cv_image,
     watermark = Image.open(logo)
     watermark = watermark.resize((1080,720))
     width, height = base_image.size
- 
+
     transparent = Image.new('RGB', (width, height), (0,0,0,0))
     transparent.paste(base_image, (0,0))
     transparent.paste(watermark, position, mask=watermark)
-    open_cv_image = np.array(transparent) 
-    # Convert RGB to BGR 
-    open_cv_image = open_cv_image[:, :, ::-1].copy() 
+    open_cv_image = np.array(transparent)
+    # Convert RGB to BGR
+    open_cv_image = open_cv_image[:, :, ::-1].copy()
     return open_cv_image
 
 ### Function to set wich sprite must be drawn
@@ -244,6 +261,11 @@ def get_face_boundbox(points, face_part):
         (x,y,w,h) = calculate_boundbox(points[48:68]) #mouth
     return (x,y,w,h)
 
+def move(client, trajectory):
+    goal = PerformMovementGoal(action=trajectory)
+    rospy.set_param('trajectory_active', True)
+    client.send_goal(goal)
+    client.wait_for_result()
 
 #Principal Loop where openCV (magic) ocurs
 def cvloop():
@@ -252,6 +274,7 @@ def cvloop():
     global path
     global flash
     global ledscolor
+    global client
     flash = False
     save = False
 
@@ -263,16 +286,19 @@ def cvloop():
     dir_ = spr+"flyes/"
     flies = [f for f in listdir(dir_) if isfile(join(dir_, f))] #image of flies to make the "animation"
 
-    ssh_info = {
-        'hostname': os.environ.get('SCP_HOSTNAME'),
-        'port': int(os.environ.get('SCP_PORT')),
-        'username': os.environ.get('SCP_USERNAME'),
-    }
-    ssh = SSHClient()
-    ssh.load_system_host_keys()
-    ssh.connect(**ssh_info)
 
-    do_scp = True
+
+    do_scp = False
+    if do_scp:
+        ssh_info = {
+            'hostname': os.environ.get('SCP_HOSTNAME'),
+            'port': int(os.environ.get('SCP_PORT')),
+            'username': os.environ.get('SCP_USERNAME'),
+        }
+        ssh = SSHClient()
+        ssh.load_system_host_keys()
+        ssh.connect(**ssh_info)
+
     generate_qr = True
     watermark = True
 
@@ -293,6 +319,8 @@ def cvloop():
     print("[INFO] loading Roboy Snapchat Filter ...")
     model = path + "/filters/shape_predictor_68_face_landmarks.dat"
     predictor = dlib.shape_predictor(model) # link to model: http://dlib.net/files/shape_predictor_68_face_landmarks.dat.bz2
+
+
 
     i = 0
     # while run_event.is_set(): #while the thread is active we loop
@@ -484,7 +512,8 @@ def cvloop():
                 # OpenCV represents image as BGR; PIL but RGB, we need to change the chanel order
             #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
-
+            move(client, 'shoulder_left_pic_down')
+            rospy.set_param('trajectory_active', False)
             ledscolor.publish("blue")
 
             filename = randomString()
@@ -495,8 +524,8 @@ def cvloop():
                 image = watermark_with_transparency(cv_image=image, logo=path+'/images/photo_border.png')
 
             print("saving img %s"%filename)
-            cv2.imwrite(filename+'.jpeg', image)    
-            
+            cv2.imwrite(filename+'.jpeg', image)
+
             if do_scp:
                 qr = generate_qr_png(url='https://bot.roboy.org/%s'%filename+'.jpeg', name='qr_%s.png'%filename, logo=path+'/images/logo.png')
 
