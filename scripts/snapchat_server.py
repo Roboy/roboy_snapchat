@@ -26,8 +26,8 @@ import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
 from roboy_control_msgs.srv import PerformActions, PerformActionsRequest
 from std_msgs.msg import String, Empty
-import actionlib
-from roboy_control_msgs.msg import PerformMovementAction, PerformMovementGoal
+#import actionlib
+#from roboy_control_msgs.msg import PerformMovementAction, PerformMovementGoal
 
 from paramiko import SSHClient
 from scp import SCPClient
@@ -113,6 +113,7 @@ def start_callback(msg):
     global client, flash
     rospy.loginfo("Starting selfie")
     move('shoulder_left_pic_up')
+    rospy.set_param('trajectory_active', True)
     flash = True
 
 
@@ -289,7 +290,7 @@ def cvloop():
 
 
 
-    do_scp = False
+    do_scp = True
     if do_scp:
         ssh_info = {
             'hostname': os.environ.get('SCP_HOSTNAME'),
@@ -336,7 +337,7 @@ def cvloop():
             flash_timestamp = time.time()
             flash = False
             ret, im = video_capture.read()
-            im = rotate(im,180)
+            #im = rotate(im,180)
             image = im[0:print_height, (im.shape[1]-print_width)/2:print_width+(im.shape[1]-print_width)/2].copy()
             gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             ledscolor.publish("black")
