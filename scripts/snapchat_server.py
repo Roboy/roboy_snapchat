@@ -562,23 +562,29 @@ def cvloop():
             cv2.imwrite(filename+'.jpeg', image)
 
             if do_scp:
-                qr = generate_qr_png(url='https://bot.roboy.org/%s'%filename+'.jpeg', name='qr_%s.png'%filename, logo=path+'/images/logo.png')
-
-                with SCPClient(ssh.get_transport()) as scp:
-                    scp.put(filename+'.jpeg', '/var/www/html')
-                    scp.put('qr_%s.png'%filename, '/var/www/html')
-
                 with SCPClient(ssh1.get_transport()) as scp:
                     scp.put(filename+'.jpeg', '/home/roboy/photoboy')
                     #scp.put('qr_%s.png'%filename, '/var/www/html')
+                    
+                rospy.set_param('snapchat/latest_filename', filename)
+                
+                qr = generate_qr_png(url='https://bot.roboy.org/%s'%filename+'.jpeg', name='qr_%s.png'%filename, logo=path+'/images/logo.png')
+                
+                with SCPClient(ssh.get_transport()) as scp:
+                    scp.put(filename+'.jpeg', '/var/www/html')
+                    scp.put('qr_%s.png'%filename, '/var/www/html')
+                
+                
 
+            else:
+                rospy.set_param('snapchat/latest_filename', filename)
 
 
                 # print("scpd")
             save = False
             flash = False
             i += 1
-            rospy.set_param('snapchat/latest_filename', filename)
+            
         # conerts to PIL format
         # image = Image.fromarray(image)
         # Converts to a TK format to visualize it in the GUI
