@@ -26,6 +26,8 @@ import rospy
 from roboy_cognition_msgs.srv import ApplyFilter
 from roboy_control_msgs.srv import PerformActions, PerformActionsRequest
 from std_msgs.msg import String, Empty
+from sensor_msgs.msg import JointState
+from std_srvs.srv import Trigger
 #import actionlib
 #from roboy_control_msgs.msg import PerformMovementAction, PerformMovementGoal
 
@@ -110,10 +112,20 @@ def print_cb(msg):
     print_photo(path=msg.data.strip()+'.jpeg')
 
 def start_callback(msg):
-    global client, flash
+    global client, flash, head_publisher, toggle_head
     rospy.loginfo("Starting selfie")
-    move('shoulder_left_pic_up')
+    #move('shoulder_left_pic_up')
     rospy.set_param('trajectory_active', True)
+    toggle_head()
+    msg = JointState()
+    msg.name = ['neck_axis2']
+    msg.position = [0.5]
+    msg.velocity = [0.0]
+    msg.effort = [0.0]
+    head_publisher.publish(msg)
+    move('shoulder_left_pic_up')
+    head_publisher.publish(msg)
+    time.sleep(1.5)
     flash = True
 
 
@@ -126,8 +138,10 @@ def snapchat_server():
     rospy.Subscriber('/roboy/cognition/apply_filter', String, callback)
     server = rospy.Service('/roboy/cognition/apply_filter', ApplyFilter, handleRequest)
     rospy.Subscriber('/roboy/cognition/print_photo', String, print_cb)
-    global ledscolor
+    global ledscolor, head_publisher, toggle_head
     ledscolor = rospy.Publisher('/roboy/control/matrix/leds/color', String, queue_size=1)
+    head_publisher = rospy.Publisher('/joint_targets', JointState, queue_size=1)
+    toggle_head = rospy.ServiceProxy('/head_movement', Trigger)
     print("Snapchat ready")
     rospy.spin()
 
@@ -277,6 +291,7 @@ def cvloop():
     global flash
     global ledscolor
     global client
+    global head_publisher
     flash = False
     save = False
 
@@ -300,6 +315,15 @@ def cvloop():
         ssh = SSHClient()
         ssh.load_system_host_keys()
         ssh.connect(**ssh_info)
+
+        ssh_info1 = {
+                'hostname': '192.168.0.225',
+                'port': 22,
+                'username': 'roboy'
+                }
+        ssh1 = SSHClient()
+        ssh1.load_system_host_keys()
+        ssh1.connect(**ssh_info1)
 
     generate_qr = True
     watermark = True
@@ -515,7 +539,16 @@ def cvloop():
             #image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 # if save:
             move('shoulder_left_pic_down')
+            head_msg = JointState()
+            head_msg.name =['neck_axis2']
+            head_msg.position = [0.0]
+            head_msg.velocity = [0.0]
+            head_msg.effort = [0.0]
+            head_publisher.publish(head_msg)
+            time.sleep(2)
             rospy.set_param('trajectory_active', False)
+            global toggle_head
+            toggle_head()
             ledscolor.publish("blue")
 
             filename = randomString()
@@ -534,6 +567,12 @@ def cvloop():
                 with SCPClient(ssh.get_transport()) as scp:
                     scp.put(filename+'.jpeg', '/var/www/html')
                     scp.put('qr_%s.png'%filename, '/var/www/html')
+
+                with SCPClient(ssh1.get_transport()) as scp:
+                    scp.put(filename+'.jpeg', '/home/roboy/photoboy')
+                    #scp.put('qr_%s.png'%filename, '/var/www/html')
+
+
 
                 # print("scpd")
             save = False
